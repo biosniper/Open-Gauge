@@ -1,5 +1,5 @@
 /*
- * Open-Gauge v0.06
+ * Open-Gauge v0.07
  * This is very much in development and right now is just testing layout and code to get it about right
  * Once this is done we will start using real values from a pressure sensor
  */
@@ -29,7 +29,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setCursor(0,20);
   display.print(F("Open-Gauge"));
-  display.println(F("v0.06"));
+  display.println(F("v0.07"));
   display.display();
   delay(2000);
   
@@ -58,12 +58,13 @@ void loop() {
   boost = ((float)bme.readPressure()*0.0001450377); // Use barometric pressure to PSI to create fake but live PSI for layout testing
   display.drawRect(0,0, 128, 64, WHITE); // Location, Size, Colour
   display.drawFastHLine(0,10, 128, WHITE); // Location, Length, Colour
-  display.drawFastVLine(64,0, 10, WHITE);
+  display.drawFastVLine(64,0, 10, WHITE); // Location, Height, Colour
   display.setTextSize(1);
   display.setCursor(12,2);
   display.print(bme.readTemperature(),1);
-  display.print(F("*C"));
-  display.setCursor(72,2);
+  display.print((char)247); //Use a proper degrees symbol
+  display.print(F("C"));
+  display.setCursor(80,2);
   display.print(bme.readAltitude(1013.25),0); // Maybe replace altimiter with voltage readout because how useful is an altimiter anyway?
   display.setCursor(120,2);
   display.print(F("m"));
