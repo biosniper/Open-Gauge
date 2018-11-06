@@ -1,5 +1,5 @@
 /*
- * Open-Gauge v0.13
+ * Open-Gauge v0.14
  * 
  * This is very much a work in progress right now and will only work for positive boost applications at this time (diesel).
  * Once testing is completed with positive boost applications I'll look to add negative for petrol turbo applications.
@@ -42,7 +42,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setCursor(0,20);
   display.print(F("Open-Gauge"));
-  display.println(F("v0.13"));
+  display.println(F("v0.14"));
   display.display();
   delay(2000);
   
@@ -70,7 +70,7 @@ void setup() {
   inittemp = bme.readTemperature();
   display.fillRect(2,2, 62,7, BLACK); //Testing drawing over only areas we have to rather than blanking the whole screen every time
   display.setTextSize(1);
-  display.setCursor(12,2);
+  display.setCursor(15,2);
   display.print(inittemp,1); //Display to 1 decimal place
   display.print((char)247); //Use a proper degrees symbol
   display.print(F("C"));
@@ -124,7 +124,7 @@ void interiortemp() {
   lastrunmillis = currentmillis;
   display.fillRect(2,2, 62,7, BLACK); // Testing drawing over only areas we have to rather than blanking the whole screen every time
   display.setTextSize(1);
-  display.setCursor(12,2);
+  display.setCursor(15,2);
   display.print(tempavg,1); //Display to 1 decimal place
   display.print((char)247); //Use a proper degrees symbol
   display.print(F("C"));
@@ -147,9 +147,27 @@ void voltmeter() {
 void boostgauge() {
   display.setCursor(12,16);
   display.setTextSize(2);
+  if (boost >= 0.1) {
   display.print(F("PSI")); // Example display layout untill pressure sensor is wired in. Probably want to account for negative pressure at some point incase it's used on a petrol
-  display.setCursor(67,16);
+  }
+  else
+  {
+  display.print(F("VAC"));
+  }
+  
+  if (boost < warnpsi) {
+  display.setCursor(69,16);
   display.print(boost,1);
+  display.fillRect(12,50, 104,7, BLACK); //Clear out the warning text because we returned below warning PSI levels
+  }
+  else
+  {
+  display.setCursor(69,16);
+  display.print(boost,1);
+  display.setTextSize(1);
+  display.setCursor(25,50);
+  display.print(F("!! WARNING !!"));
+  }
 }
 
 void boostpressbar() {
