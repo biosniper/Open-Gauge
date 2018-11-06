@@ -1,7 +1,15 @@
 /*
- * Open-Gauge v0.12
- * This is very much in development and right now is just testing layout and code to get it about right
- * Once this is done we will start using real values from a pressure sensor.
+ * Open-Gauge v0.13
+ * 
+ * This is very much a work in progress right now and will only work for positive boost applications at this time (diesel).
+ * Once testing is completed with positive boost applications I'll look to add negative for petrol turbo applications.
+ * 
+ * The entire UI has been written specifically for a SSD1306 128x64 OLED display using I2C. If you don't use this display size then the UI will be messed up and you'll have to re-format everything.
+ * Additionally SPI is not catered for as I only have I2C displays on hand.
+ * 
+ * Remember that display sizes need to be changed in Adafruit_SSD1306.h to get this to work correctly.
+ * The BMP280 sensor address also needs changing in Adafruit_BMP280.h if yours is not at the default I2C address.
+ * 
  */
 
 float boost = 0;
@@ -28,13 +36,13 @@ Adafruit_BMP280 bme; // I2C
 
 void setup() {
   lastrunmillis = millis();
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3c);
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3c); //Initialise at a different I2C address if your display isn't on 0x3c
   display.clearDisplay();
   display.setTextSize(2);
   display.setTextColor(WHITE);
   display.setCursor(0,20);
   display.print(F("Open-Gauge"));
-  display.println(F("v0.12"));
+  display.println(F("v0.13"));
   display.display();
   delay(2000);
   
@@ -148,6 +156,7 @@ void boostpressbar() {
   int barwidthmax = 104; //How many pixels wide the bar is going to be at its max reading
   float barpxperpsi = 0;
   float bardrawpx = 0;
+  int i;
   barpxperpsi = barwidthmax / warnpsi; //Create how many pixels we need to draw up to our warning / max PSI
   bardrawpx = (barpxperpsi * boost) + 0.5; //Adding 0.5 to get the extra out of rounding errors and make it tidy (ish)
   
@@ -157,5 +166,9 @@ void boostpressbar() {
   
   display.fillRect(12,35, barwidthmax,10, BLACK); //Wipe the bar before drawing it again to allow us to make the bar move properly
   display.fillRect(12,35, bardrawpx,10, WHITE);
-
+  for (i = 11; i <= 106;){ //Segment the bar.
+    i = i + 5; // Makes the blocks 4 pixels wide by drawing a black line every 5th pixel. This divides nicely by the total bar width
+    display.drawFastVLine(i,35, 10, BLACK); // Location, Height, Colour
+  }
+  
 }
