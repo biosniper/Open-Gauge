@@ -1,13 +1,18 @@
 /*
- * Open-Gauge v0.10
+ * Open-Gauge v0.11
  * This is very much in development and right now is just testing layout and code to get it about right
  * Once this is done we will start using real values from a pressure sensor.
  */
 
 float boost = 0;
 float atmopsi = 0;
-float warnpsi = 35; // 35PSI of boost is quite a lot! We probably want to warn if we are going over this
+float warnpsi = 35; //35PSI of boost is quite a lot! We probably want to warn if we are going over this
 int uishown = 0;
+float inittemp = 0;
+
+unsigned long lastrunmillis;
+unsigned long currentmillis;
+const unsigned long sampleperiod1 = 30000; //This sample is used for the temperature
 
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -22,13 +27,14 @@ Adafruit_BMP280 bme; // I2C
 
 
 void setup() {
+  lastrunmillis = millis();
   display.begin(SSD1306_SWITCHCAPVCC, 0x3c);
   display.clearDisplay();
   display.setTextSize(2);
   display.setTextColor(WHITE);
   display.setCursor(0,20);
   display.print(F("Open-Gauge"));
-  display.println(F("v0.10"));
+  display.println(F("v0.11"));
   display.display();
   delay(2000);
   
@@ -51,14 +57,23 @@ void setup() {
   display.display();
   delay(1000);
   display.clearDisplay();
+  
+  //Set a start temp so the temps dont load up entirely blank!
+  inittemp = bme.readTemperature();
+  display.fillRect(2,2, 62,7, BLACK); //Testing drawing over only areas we have to rather than blanking the whole screen every time
+  display.setTextSize(1);
+  display.setCursor(12,2);
+  display.print(inittemp,1); //Display to 1 decimal place
+  display.print((char)247); //Use a proper degrees symbol
+  display.print(F("C"));
 }
 
 void loop() {
   
   // Set up some sensors
-  atmopsi = ((float)bme.readPressure()*0.0001450377); // Create atmospheric pressure PSI for later. We will need it to 0 the boost pressure at altitude etc. Hence BMP250
+  atmopsi = ((float)bme.readPressure()*0.0001450377); // Create atmospheric pressure PSI for later. We will need it to 0 the boost pressure at altitude etc. Hence BMP280
   boost = ((float)bme.readPressure()*0.0001450377); // Use barometric pressure to PSI to create fake but live PSI for layout testing
-  
+  currentmillis = millis();
   showui();
   interiortemp();
   voltmeter();
@@ -93,7 +108,7 @@ void showui () {
   }
   else
   {
-  uishown = 1;
+  uishown = 1; // If we revert to clearing the entire display, everything up to the void needs to be removed
   display.drawRect(0,0, 128, 64, WHITE); // Location, Size, Colour
   display.drawFastHLine(0,10, 128, WHITE); // Location, Length, Colour
   display.drawFastVLine(64,0, 10, WHITE); // Location, Height, Colour
@@ -101,25 +116,33 @@ void showui () {
 }
 
 void interiortemp() {
+  
+  if (currentmillis - lastrunmillis >= sampleperiod1) { // Changed to sample only every sampleperiod1 seconds to stop the constant "flicker" of temperature values. They still move around, but this is nicer.
   // Read temp a few times to "smooth" the values a bit.
   int i;
   float tempavg = 0;
 
-  for (i = 0; i < 100; i++){
+  for (i = 0; i < 30; i++){
     tempavg = tempavg + bme.readTemperature();
   }
-  tempavg = tempavg / 100;
-  
+  tempavg = tempavg / 30;
+  lastrunmillis = currentmillis;
   display.fillRect(2,2, 62,7, BLACK); // Testing drawing over only areas we have to rather than blanking the whole screen every time
   display.setTextSize(1);
   display.setCursor(12,2);
   display.print(tempavg,1); //Display to 1 decimal place
   display.print((char)247); //Use a proper degrees symbol
   display.print(F("C"));
+  }
+  else
+  {
+  
+  }
 }
 
 void voltmeter() {
   display.fillRect(65,2, 62,7, BLACK); // Testing drawing over only areas we have to rather than blanking the whole screen every time
+  display.setTextSize(1);
   display.setCursor(80,2);
   display.print(bme.readAltitude(1013.25),0); // Replace altimeter with voltage readout at a later date. Altimeter is just for testing UI layout
   display.setCursor(120,2);
