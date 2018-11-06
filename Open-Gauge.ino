@@ -1,14 +1,13 @@
 /*
- * Open-Gauge v0.07
+ * Open-Gauge v0.10
  * This is very much in development and right now is just testing layout and code to get it about right
- * Once this is done we will start using real values from a pressure sensor
+ * Once this is done we will start using real values from a pressure sensor.
  */
 
-int mapsen = 0;
 float boost = 0;
-float mapsenval = 0;
-float warnpsi = 20.5;
-float baropress = 0;
+float atmopsi = 0;
+float warnpsi = 35; // 35PSI of boost is quite a lot! We probably want to warn if we are going over this
+int uishown = 0;
 
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -29,7 +28,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setCursor(0,20);
   display.print(F("Open-Gauge"));
-  display.println(F("v0.07"));
+  display.println(F("v0.10"));
   display.display();
   delay(2000);
   
@@ -55,24 +54,17 @@ void setup() {
 }
 
 void loop() {
+  
+  // Set up some sensors
+  atmopsi = ((float)bme.readPressure()*0.0001450377); // Create atmospheric pressure PSI for later. We will need it to 0 the boost pressure at altitude etc. Hence BMP250
   boost = ((float)bme.readPressure()*0.0001450377); // Use barometric pressure to PSI to create fake but live PSI for layout testing
-  display.drawRect(0,0, 128, 64, WHITE); // Location, Size, Colour
-  display.drawFastHLine(0,10, 128, WHITE); // Location, Length, Colour
-  display.drawFastVLine(64,0, 10, WHITE); // Location, Height, Colour
-  display.setTextSize(1);
-  display.setCursor(12,2);
-  display.print(bme.readTemperature(),1);
-  display.print((char)247); //Use a proper degrees symbol
-  display.print(F("C"));
-  display.setCursor(80,2);
-  display.print(bme.readAltitude(1013.25),0); // Maybe replace altimiter with voltage readout because how useful is an altimiter anyway?
-  display.setCursor(120,2);
-  display.print(F("m"));
-  display.setCursor(12,16);
-  display.setTextSize(2);
-  display.print(F("PSI")); // Example display layout untill pressure sensor is wired in
-  display.setCursor(67,16);
-  display.print(boost,1);
+  
+  showui();
+  interiortemp();
+  voltmeter();
+  boostgauge();
+ 
+  // This sets up the boost gauge pressure "bar" display
   display.fillRect(12,35, 5,10, WHITE); // Location, Size, Colour
   display.fillRect(20,35, 5,10, WHITE);
   display.fillRect(28,35, 5,10, WHITE);
@@ -86,7 +78,58 @@ void loop() {
   display.fillRect(92,35, 5,10, WHITE);
   display.fillRect(100,35, 5,10, WHITE);
   display.fillRect(108,35, 5,10, WHITE);
+  
+  // Now show everything we did
   display.display();
-  display.clearDisplay();
 
+  // Now clear it so we can start again
+  //display.clearDisplay(); // Maybe this is a very "expensive" way of drawing the UI and output?
+
+}
+
+void showui () {
+  if (uishown >= 1) // Stop us re-drawing the whole UI all the time
+  {
+  }
+  else
+  {
+  uishown = 1;
+  display.drawRect(0,0, 128, 64, WHITE); // Location, Size, Colour
+  display.drawFastHLine(0,10, 128, WHITE); // Location, Length, Colour
+  display.drawFastVLine(64,0, 10, WHITE); // Location, Height, Colour
+  }
+}
+
+void interiortemp() {
+  // Read temp a few times to "smooth" the values a bit.
+  int i;
+  float tempavg = 0;
+
+  for (i = 0; i < 100; i++){
+    tempavg = tempavg + bme.readTemperature();
+  }
+  tempavg = tempavg / 100;
+  
+  display.fillRect(2,2, 62,7, BLACK); // Testing drawing over only areas we have to rather than blanking the whole screen every time
+  display.setTextSize(1);
+  display.setCursor(12,2);
+  display.print(tempavg,1); //Display to 1 decimal place
+  display.print((char)247); //Use a proper degrees symbol
+  display.print(F("C"));
+}
+
+void voltmeter() {
+  display.fillRect(65,2, 62,7, BLACK); // Testing drawing over only areas we have to rather than blanking the whole screen every time
+  display.setCursor(80,2);
+  display.print(bme.readAltitude(1013.25),0); // Replace altimeter with voltage readout at a later date. Altimeter is just for testing UI layout
+  display.setCursor(120,2);
+  display.print(F("m"));
+}
+
+void boostgauge() {
+  display.setCursor(12,16);
+  display.setTextSize(2);
+  display.print(F("PSI")); // Example display layout untill pressure sensor is wired in. Probably want to account for negative pressure at some point incase it's used on a petrol
+  display.setCursor(67,16);
+  display.print(boost,1);
 }
