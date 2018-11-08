@@ -1,5 +1,5 @@
 /*
- * Open-Gauge v0.15
+ * Open-Gauge v0.16
  * 
  * This is very much a work in progress right now and will only work for positive boost applications at this time (diesel).
  * Once testing is completed with positive boost applications I'll look to add negative for petrol turbo applications.
@@ -18,9 +18,11 @@ float warnpsi = 35; //35PSI of boost is quite a lot! We probably want to warn if
 int uishown = 0;
 float inittemp = 0;
 
-unsigned long lastrunmillis;
+unsigned long lastrunmillis; //For temperature gauge
+unsigned long voltslastrunmillis; //For voltmeter
 unsigned long currentmillis;
 const unsigned long sampleperiod1 = 30000; //This sample is used for the temperature
+const unsigned long sampleperiod2 = 3000; //This sample is used for the voltmeter
 
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -44,7 +46,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setCursor(0,20);
   display.print(F("Open-Gauge"));
-  display.println(F("v0.15"));
+  display.println(F("v0.16"));
   display.display();
   delay(2000);
   
@@ -143,23 +145,35 @@ void interiortemp() {
 }
 
 void voltmeter() {
-
+  
+  if (currentmillis - voltslastrunmillis >= sampleperiod2) {
   float vOUT = 0.0;
   float vIN = 0.0;
   float R1 = 30000.0;
   float R2 = 7500.0;
   int voltagevalue = 0;
-
-  voltagevalue = analogRead(voltagesensor);
+  
+  int i;
+    for (i = 0; i < 5; i++){
+    voltagevalue = voltagevalue + analogRead(voltagesensor);
+    
+  }
+  voltslastrunmillis = currentmillis;
+  voltagevalue = voltagevalue / 5;
   vOUT = (voltagevalue * 5.0) / 1024.0;
   vIN = vOUT / (R2/(R1+R2));
+  
   display.fillRect(65,2, 62,7, BLACK);
   display.setTextSize(1);
   display.setCursor(80,2);
   display.print(vIN);
   display.setCursor(111,2);
   display.print(F("v"));
-
+  }
+  else
+  {
+  
+  }
 }
 
 void boostgauge() {
@@ -178,7 +192,7 @@ void boostgauge() {
   if (boost < warnpsi) {
   display.setCursor(69,16);
   display.print(boost,1);
-  display.fillRect(12,50, 104,7, BLACK); //Clear out the warning text because we returned below warning PSI levels
+  display.fillRect(11,50, 107,7, BLACK); //Clear out the warning text because we returned below warning PSI levels
   }
   else
   {
@@ -187,6 +201,8 @@ void boostgauge() {
   display.setTextSize(1);
   display.setCursor(25,50);
   display.print(F("!! WARNING !!"));
+  //display.setCursor(11,50);
+  //display.print(F("DANGER TO MANIFOLD"));
   }
 }
 
