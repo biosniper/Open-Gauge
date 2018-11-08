@@ -1,5 +1,5 @@
 /*
- * Open-Gauge v0.14
+ * Open-Gauge v0.15
  * 
  * This is very much a work in progress right now and will only work for positive boost applications at this time (diesel).
  * Once testing is completed with positive boost applications I'll look to add negative for petrol turbo applications.
@@ -33,6 +33,8 @@ Adafruit_SSD1306 display(OLED_RESET);
 
 Adafruit_BMP280 bme; // I2C
 
+int mapsenpin = A1;
+int voltagesensor = A0;
 
 void setup() {
   lastrunmillis = millis();
@@ -42,7 +44,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setCursor(0,20);
   display.print(F("Open-Gauge"));
-  display.println(F("v0.14"));
+  display.println(F("v0.15"));
   display.display();
   delay(2000);
   
@@ -79,8 +81,13 @@ void setup() {
 void loop() {
   
   // Set up some sensors
-  atmopsi = ((float)bme.readPressure()*0.0001450377); // Create atmospheric pressure PSI for later. We will need it to 0 the boost pressure at altitude etc. Hence BMP280
-  boost = ((float)bme.readPressure()*0.0001450377); // Use barometric pressure to PSI to create fake but live PSI for layout testing
+  atmopsi = ((float)bme.readPressure()*0.0001450377); // Create atmospheric pressure PSI for later. We will need it to zero the boost pressure at altitude etc. Hence BMP280
+  
+  boost = analogRead(mapsenpin); //Fake boost from trimpot for testing
+  delay (10);
+  boost = analogRead(mapsenpin);
+  boost = (boost / 10);
+  
   currentmillis = millis(); //This will be used for time based refreshes in functions
   
   showui(); //Start display stuff here
@@ -136,22 +143,35 @@ void interiortemp() {
 }
 
 void voltmeter() {
-  display.fillRect(65,2, 62,7, BLACK); // Testing drawing over only areas we have to rather than blanking the whole screen every time
+
+  float vOUT = 0.0;
+  float vIN = 0.0;
+  float R1 = 30000.0;
+  float R2 = 7500.0;
+  int voltagevalue = 0;
+
+  voltagevalue = analogRead(voltagesensor);
+  vOUT = (voltagevalue * 5.0) / 1024.0;
+  vIN = vOUT / (R2/(R1+R2));
+  display.fillRect(65,2, 62,7, BLACK);
   display.setTextSize(1);
   display.setCursor(80,2);
-  display.print(bme.readAltitude(1013.25),0); // Replace altimeter with voltage readout at a later date. Altimeter is just for testing UI layout
-  display.setCursor(120,2);
-  display.print(F("m"));
+  display.print(vIN);
+  display.setCursor(111,2);
+  display.print(F("v"));
+
 }
 
 void boostgauge() {
   display.setCursor(12,16);
   display.setTextSize(2);
-  if (boost >= 0.1) {
+  if (boost >= 0) {
+  display.fillRect(12,16, 114,14, BLACK);
   display.print(F("PSI")); // Example display layout untill pressure sensor is wired in. Probably want to account for negative pressure at some point incase it's used on a petrol
   }
   else
   {
+  display.fillRect(12,16, 114,14, BLACK);
   display.print(F("VAC"));
   }
   
