@@ -26,6 +26,7 @@ float warnpsi = 35; //Warn if over this much PSI of boost. Change this to your m
 int uishown = 0;
 float inittemp = 0;
 int fafmode = 0; //Set to 1 for Fast and Furious style warnings when over max boost ;) 
+int debugmode = 1; //Set to 1 to bypass certain checks and allow device to boot without sensors for testing
 
 unsigned long lastrunmillis; //For temperature gauge sample timer
 unsigned long voltslastrunmillis; //For voltmeter sample timer
@@ -57,7 +58,7 @@ void setup() {
   display.println(F("Checking sensors;"));
   display.display();
   
-  if (!bme.begin()) {  
+  if (!bme.begin() && debugmode == 0) {  
    display.setCursor(0,10);
    display.println(F("No BMP280 sensor"));
    display.display();
@@ -68,7 +69,7 @@ void setup() {
     display.print(F("BMP280 = OK"));
   }
 
-  if (!analogRead(voltagesensor)) {
+  if (!analogRead(voltagesensor) && debugmode == 0) {
    display.setCursor(0,18);
    display.println(F("No Voltage or sensor"));
    display.display();
