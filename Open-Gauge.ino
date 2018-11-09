@@ -1,5 +1,5 @@
 /*
- * Open-Gauge v0.17
+ * Open-Gauge v0.18
  * 
  * This is very much a work in progress right now and will only work for positive boost applications at this time (diesel).
  * Once testing is completed with positive boost applications I'll look to add negative for petrol turbo applications.
@@ -26,7 +26,7 @@ float warnpsi = 35; //Warn if over this much PSI of boost. Change this to your m
 int uishown = 0;
 float inittemp = 0;
 int fafmode = 0; //Set to 1 for Fast and Furious style warnings when over max boost ;) 
-int debugmode = 1; //Set to 1 to bypass certain checks and allow device to boot without sensors for testing
+int debugmode = 0; //Set to 1 to bypass certain checks and allow device to boot without sensors for testing
 
 unsigned long lastrunmillis; //For temperature gauge sample timer
 unsigned long voltslastrunmillis; //For voltmeter sample timer
@@ -47,7 +47,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setCursor(0,20);
   display.print(F("Open-Gauge"));
-  display.println(F("v0.17"));
+  display.println(F("v0.18"));
   display.display();
   delay(2000);
   
