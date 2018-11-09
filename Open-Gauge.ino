@@ -1,5 +1,5 @@
 /*
- * Open-Gauge v0.16
+ * Open-Gauge v0.17
  * 
  * This is very much a work in progress right now and will only work for positive boost applications at this time (diesel).
  * Once testing is completed with positive boost applications I'll look to add negative for petrol turbo applications.
@@ -11,19 +11,6 @@
  * The BMP280 sensor address also needs changing in Adafruit_BMP280.h if yours is not at the default I2C address.
  * 
  */
-
-float boost = 0;
-float atmopsi = 0;
-float warnpsi = 35; //35PSI of boost is quite a lot! We probably want to warn if we are going over this. Change this to your maximum boost value application per turbo
-int uishown = 0;
-float inittemp = 0;
-
-unsigned long lastrunmillis; //For temperature gauge
-unsigned long voltslastrunmillis; //For voltmeter
-unsigned long currentmillis;
-const unsigned long sampleperiod1 = 30000; //This sample is used for the temperature
-const unsigned long sampleperiod2 = 3000; //This sample is used for the voltmeter
-
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -33,10 +20,23 @@ const unsigned long sampleperiod2 = 3000; //This sample is used for the voltmete
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
 
-Adafruit_BMP280 bme; // I2C
+float boost = 0;
+float atmopsi = 0;
+float warnpsi = 35; //Warn if over this much PSI of boost. Change this to your maximum boost value application per turbo
+int uishown = 0;
+float inittemp = 0;
+int fafmode = 0; //Set to 1 for Fast and Furious style warnings when over max boost ;) 
+
+unsigned long lastrunmillis; //For temperature gauge sample timer
+unsigned long voltslastrunmillis; //For voltmeter sample timer
+unsigned long currentmillis; // Used for the above timers compares
+const unsigned long sampleperiod1 = 30000; //This sample timer is used for the temperature
+const unsigned long sampleperiod2 = 3000; //This sample timer is used for the voltmeter
 
 int mapsenpin = A1;
 int voltagesensor = A0;
+
+Adafruit_BMP280 bme; // I2C
 
 void setup() {
   lastrunmillis = millis();
@@ -46,7 +46,7 @@ void setup() {
   display.setTextColor(WHITE);
   display.setCursor(0,20);
   display.print(F("Open-Gauge"));
-  display.println(F("v0.16"));
+  display.println(F("v0.17"));
   display.display();
   delay(2000);
   
@@ -63,11 +63,24 @@ void setup() {
    display.display();
     while (1);
   }
-  
-  display.setCursor(0,10);
-  display.print(F("BMP280 = OK"));
+  else {
+    display.setCursor(0,10);
+    display.print(F("BMP280 = OK"));
+  }
+
+  if (!analogRead(voltagesensor)) {
+   display.setCursor(0,18);
+   display.println(F("No Voltage or sensor"));
+   display.display();
+    while (1);
+  }
+  else {
+   display.setCursor(0,18);
+   display.println(F("Voltage = OK")); 
+  }
+   
   display.display();
-  delay(1000);
+  delay(500);
   display.clearDisplay();
   
   //Set a start temp so the temps dont load up entirely blank!
@@ -87,7 +100,7 @@ void loop() {
   
   boost = analogRead(mapsenpin); //Fake boost from trimpot for testing
   delay (10);
-  boost = analogRead(mapsenpin);
+  boost = analogRead(mapsenpin); //Read twice for stability
   boost = (boost / 10);
   
   currentmillis = millis(); //This will be used for time based refreshes in functions
@@ -100,9 +113,6 @@ void loop() {
  
   // Now show everything we did
   display.display();
-
-  // Now clear it so we can start again
-  //display.clearDisplay(); // Maybe this is a very "expensive" way of drawing the UI and output?
 
 }
 
@@ -140,7 +150,7 @@ void interiortemp() {
   }
   else
   {
-  
+  //Doing nothing here as we don't update the screen when there is no changes!
   }
 }
 
@@ -165,10 +175,20 @@ void voltmeter() {
   
   display.fillRect(65,2, 62,7, BLACK);
   display.setTextSize(1);
-  display.setCursor(80,2);
-  display.print(vIN);
-  display.setCursor(111,2);
-  display.print(F("v"));
+
+  if (vIN < 12) { //If we have below 12v this doesn't tend to be good for a car battery. We need to warn that it's low and may need charging or replacing.
+    display.setCursor(80,2);
+    display.print(F("LOW"));
+    display.setCursor(111,2);
+    display.print(F("v"));
+  }
+  else {
+    display.setCursor(80,2);
+    display.print(vIN);
+    display.setCursor(111,2);
+    display.print(F("v"));
+  }
+  
   }
   else
   {
@@ -177,33 +197,39 @@ void voltmeter() {
 }
 
 void boostgauge() {
-  display.setCursor(12,16);
-  display.setTextSize(2);
+    display.setCursor(12,16);
+    display.setTextSize(2);
+  
   if (boost >= 0) {
-  display.fillRect(12,16, 114,14, BLACK);
-  display.print(F("PSI")); // Example display layout untill pressure sensor is wired in. Probably want to account for negative pressure at some point incase it's used on a petrol
+    display.fillRect(12,16, 114,14, BLACK); //Destroy the gague readings and values from the display
+    display.print(F("PSI"));
   }
   else
   {
-  display.fillRect(12,16, 114,14, BLACK);
-  display.print(F("VAC"));
+    display.fillRect(12,16, 114,14, BLACK);
+    display.print(F("VAC")); //If we have less than 0 PSI, we are probaby in vacuum state for petrols
   }
   
   if (boost < warnpsi) {
-  display.setCursor(69,16);
-  display.print(boost,1);
-  display.fillRect(11,50, 107,7, BLACK); //Clear out the warning text because we returned below warning PSI levels
+    display.setCursor(69,16);
+    display.print(boost,1);
+    display.fillRect(11,50, 107,7, BLACK); //Clear out the warning text because we returned below warning PSI levels
   }
-  else
-  {
-  display.setCursor(69,16);
-  display.print(boost,1);
-  display.setTextSize(1);
-  display.setCursor(25,50);
-  display.print(F("!! WARNING !!"));
-  //display.setCursor(11,50);
-  //display.print(F("DANGER TO MANIFOLD"));
+  else if (fafmode == 0 && boost > warnpsi) { //Warnings for over max boost pressure
+    display.setCursor(69,16);
+    display.print(boost,1);
+    display.setTextSize(1);
+    display.setCursor(25,50);
+    display.print(F("!! WARNING !!"));
   }
+  else if (fafmode == 1 && boost > warnpsi) {
+    display.setCursor(69,16);
+    display.print(boost,1);
+    display.setTextSize(1);
+    display.setCursor(11,50);
+    display.print(F("DANGER TO MANIFOLD"));
+  }
+
 }
 
 void boostpressbar() {
@@ -217,10 +243,10 @@ void boostpressbar() {
   if (bardrawpx >= barwidthmax){ //Make sure we never draw more than the maximum pixels!
     bardrawpx = barwidthmax;
   }
-  
-  display.fillRect(12,35, barwidthmax,10, BLACK); //Wipe the bar before drawing it again to allow us to make the bar move properly
-  display.fillRect(12,35, bardrawpx,10, WHITE);
-  for (i = 11; i <= 106;){ //Segment the bar.
+    display.fillRect(12,35, barwidthmax,10, BLACK); //Wipe the bar before drawing it again to allow us to make the bar move properly
+    display.fillRect(12,35, bardrawpx,10, WHITE); //Daw the bar
+
+    for (i = 11; i <= 106;){ //Segment the bar.
     i = i + 5; // Makes the blocks 4 pixels wide by drawing a black line every 5th pixel. This divides nicely by the total bar width
     display.drawFastVLine(i,35, 10, BLACK); // Location, Height, Colour
   }
